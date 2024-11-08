@@ -1,0 +1,129 @@
+package proyecto_1;
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+parser code {:
+
+    //ArrayList<ArrayList<String>> listExprRegulares = new ArrayList<>();  //Lista de expresiones regulares
+
+    ArrayList<String> listNotacion = new ArrayList<>();
+    ArrayList<terminoExpr> terminosExpr = new ArrayList<>();
+
+    public void syntax_error(Symbol s){
+        //System.out.println("Error de sintaxis: "+ s.value +" Linea "+(s.left+1)+" columna "+(s.right+1) );
+        errores.listaErrores.add(new error("Error de sintaxis","El caracter : "+s.value,(s.left+1),(s.right+1)));
+    }
+    
+
+
+
+    //public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception{ 
+    //    System.out.println("Error No Recuperable de sintaxis: "+ s.value +" Linea "+(s.left+1)+" columna "+(s.right+1) );
+    //}
+
+:}
+terminal String       ID,CONJ,STRING,CORCHETE_ABRE,CORCHETE_CIERRA,CONCATENACION,DISYUNCION,C_KLEENE,C_POSITIVA,OPCIONAL,HASTA,COMA,SALTO_LINEA,COMILLA_DOBLE,COMILLA_SIMPLE,DOS_PUNTOS,GUION,MAYOR_QUE,PUNTO_COMA,SEPARADOR;
+terminal String       LETRA_MIN,LETRA_MAY,DIGITO,ASCII;
+
+
+non terminal          STRUC_PRINCIPAL,DECLARACION_CONJUNTO,DECLARACION_CONJUNTOS,EXPR_REGULAR,OPERACION,EXPR_REGULARES,LEXEMAS,LEXEMA;
+non terminal ArrayList<String> ITEMS;
+non terminal String   ESPECIAL,ITEM,NOTACION,CONJUNTO;
+
+
+precedence left DISYUNCION;
+precedence left CONCATENACION;
+precedence left C_KLEENE,C_POSITIVA,OPCIONAL;
+
+
+start with STRUC_PRINCIPAL;
+
+//ESTRUCTURA PRINCIPAL
+STRUC_PRINCIPAL ::= CORCHETE_ABRE  DECLARACION_CONJUNTOS EXPR_REGULARES SEPARADOR SEPARADOR LEXEMAS  CORCHETE_CIERRA             {::}
+                |error
+                ;
+
+//DECLARACIONES DE CONJUNTOS
+DECLARACION_CONJUNTOS ::= DECLARACION_CONJUNTO                                                {::}
+                        |DECLARACION_CONJUNTO  DECLARACION_CONJUNTOS                          {::}
+;
+
+//DECLARACION DE UN CONJUNTO
+DECLARACION_CONJUNTO ::= CONJ  DOS_PUNTOS  ID:iden  GUION  MAYOR_QUE  NOTACION:nota  PUNTO_COMA         {:exprRegulares.conjuntos.add(new nodoConjunto(nota,iden,listNotacion));
+                                                                                                            listNotacion.clear();:}
+;
+
+//NOTACION DE UN CONJUNTO
+NOTACION ::= LETRA_MIN:a  HASTA  LETRA_MIN:b                        {:listNotacion.add(a); listNotacion.add(b); RESULT = "RANGO";:}
+            |LETRA_MAY:a  HASTA  LETRA_MAY:b                        {:listNotacion.add(a); listNotacion.add(b); RESULT = "RANGO";:}
+            |DIGITO:a  HASTA  DIGITO:b                              {:listNotacion.add(a); listNotacion.add(b); RESULT = "RANGO";:}
+            |ITEMS:a                                                {:RESULT = "EXPLICITA";:}
+            |ESPECIAL:a  HASTA  ESPECIAL:b                          {:listNotacion.add(a); listNotacion.add(b); RESULT = "RANGO_ESPECIAL";:}
+;
+
+ITEMS ::= ITEM:a                                                      {:listNotacion.add(a);:}
+        |ITEMS  COMA  ITEM:a                                          {:listNotacion.add(a);:}
+;
+
+ITEM ::= LETRA_MIN:a                                                  {:RESULT = a;:}
+        |LETRA_MAY:a                                                  {:RESULT = a;:}
+        |DIGITO:a                                                     {:RESULT = a;:}
+        |ESPECIAL:a                                                   {:RESULT = a;:}
+;
+
+ESPECIAL ::= ASCII:a                                                  {:RESULT = a;:}
+            |CORCHETE_ABRE:a                                          {:RESULT = a;:}
+            |CORCHETE_CIERRA:a                                        {:RESULT = a;:}
+            |CONCATENACION:a                                          {:RESULT = a;:}
+            |DISYUNCION:a                                             {:RESULT = a;:}
+            |C_KLEENE:a                                               {:RESULT = a;:}
+            |C_POSITIVA:a                                             {:RESULT = a;:}
+            |OPCIONAL:a                                               {:RESULT = a;:}
+            |COMA:a                                                   {:RESULT = a;:}
+            |COMILLA_DOBLE:a                                          {:RESULT = a;:}
+            |COMILLA_SIMPLE:a                                         {:RESULT = a;:}
+            |DOS_PUNTOS:a                                             {:RESULT = a;:}
+            |GUION:a                                                  {:RESULT = a;:}
+            |MAYOR_QUE:a                                              {:RESULT = a;:}
+            |PUNTO_COMA:a                                             {:RESULT = a;:}
+;
+
+//DECLARACION DE EXPRESIONES REGULARES
+EXPR_REGULARES ::= EXPR_REGULAR                                     {::}
+                |EXPR_REGULAR EXPR_REGULARES                        {::}
+;
+
+
+//DECLARACION DE EXPRESION REGULAR
+EXPR_REGULAR ::= ID:a GUION MAYOR_QUE OPERACION PUNTO_COMA          {:terminosExpr.add(new terminoExpr("CENTINELA","#"));
+                                                                    terminosExpr.add(new terminoExpr("CONCATENACION","."));
+                                                                    exprRegulares.listExprRegulares.add(new nodoExprRegular(a,terminosExpr));
+                                                                    terminosExpr.clear();:}
+;
+
+//EXPRESION REGULAR
+OPERACION ::= CONCATENACION:a OPERACION OPERACION                      {:terminosExpr.add(new terminoExpr("CONCATENACION",a));:}
+            |DISYUNCION:a OPERACION OPERACION                          {:terminosExpr.add(new terminoExpr("DISYUNCION",a));:}
+            |C_KLEENE:a OPERACION                                      {:terminosExpr.add(new terminoExpr("C_KLEENE",a));:}
+            |C_POSITIVA:a OPERACION                                    {:terminosExpr.add(new terminoExpr("C_POSITIVA",a));:}
+            |OPCIONAL:a OPERACION                                      {:terminosExpr.add(new terminoExpr("OPCIONAL",a));:}
+            |STRING:a                                                  {:terminosExpr.add(new terminoExpr("STRING",a));:}
+            |CONJUNTO                                                  {::}
+            |SALTO_LINEA:a                                             {:terminosExpr.add(new terminoExpr("SALTO_LINEA","\\\\n"));:}
+            |COMILLA_SIMPLE:a                                          {:terminosExpr.add(new terminoExpr("COMILLA_SIMPLE",a));:}
+            |COMILLA_DOBLE:a                                           {:terminosExpr.add(new terminoExpr("COMILLA_DOBLE",a));:}
+;
+
+CONJUNTO ::= CORCHETE_ABRE ID:a CORCHETE_CIERRA                     {:terminosExpr.add(new terminoExpr("CONJUNTO",a));:}
+;
+
+//DECLARACION DE LEXEMAS
+LEXEMAS ::= LEXEMA                                                  {::}
+            |LEXEMA LEXEMAS                                         {::}
+;
+
+//DECLARACION DE UN LEXEMA
+LEXEMA ::= ID:a DOS_PUNTOS STRING:b PUNTO_COMA                      {:lexemas.listLexemas.add(new String[]{a,b});:}
+;
+
+

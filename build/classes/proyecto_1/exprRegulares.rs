@@ -1,0 +1,4 @@
+proyecto_1.exprRegulares
+proyecto_1.nodoConjunto
+proyecto_1.terminoExpr
+proyecto_1.nodoExprRegular

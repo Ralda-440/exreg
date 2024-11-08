@@ -1,0 +1,3 @@
+proyecto_1.tablaTransiciones
+proyecto_1.terminal
+proyecto_1.transicion
